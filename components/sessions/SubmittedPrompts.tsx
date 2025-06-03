@@ -1,44 +1,25 @@
 "use client"
-import { useEffect, useState } from 'react'
-import { getSessionPrompts } from '@/lib/supabase/services/prompts'
-import type { Prompt } from '@/lib/supabase/types'
+import { useSessionPrompts } from '@/lib/supabase/hooks/useSessionPrompts'
 
 interface SubmittedPromptsProps {
   sessionId: string
 }
 
 export function SubmittedPrompts({ sessionId }: SubmittedPromptsProps) {
-  const [prompts, setPrompts] = useState<Prompt[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    async function fetchData() {
-      setLoading(true)
-      setError(null)
-      try {
-        const data = await getSessionPrompts(sessionId)
-        setPrompts(data)
-      } catch (err: any) {
-        setError(err.message || 'Failed to load prompts')
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchData()
-  }, [sessionId])
+  const { data: prompts, loading, error } = useSessionPrompts(sessionId, undefined, 500)
 
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold mb-4">Submitted Prompts</h2>
       {loading && <div className="text-muted-foreground">Loading prompts...</div>}
-      {error && <div className="text-red-500 bg-red-50 p-3 rounded">{error}</div>}
-      {!loading && !error && prompts.length === 0 && (
+      {typeof error === 'string' && <div className="text-red-500 bg-red-50 p-3 rounded">{error}</div>}
+      {typeof error === 'object' && error && 'message' in (error as any) && <div className="text-red-500 bg-red-50 p-3 rounded">{(error as any).message}</div>}
+      {!loading && !error && prompts && prompts.length === 0 && (
         <div className="text-muted-foreground bg-muted/50 p-6 rounded-lg text-center">
           No prompts submitted yet. Share the QR code above to get started!
         </div>
       )}
-      {!loading && !error && prompts.length > 0 && (
+      {!loading && !error && prompts && prompts.length > 0 && (
         <div className="overflow-x-auto">
           <div className="rounded-lg border border-gray-300 overflow-hidden">
             <table className="min-w-full bg-card">
