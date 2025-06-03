@@ -4,14 +4,13 @@ import type { Session } from '@/lib/supabase/types'
 // ==================== SESSION FUNCTIONS ====================
 
 // Create new party session
-export async function createSession(userId: string, name?: string, description?: string): Promise<Session> {
+export async function createSession(userId: string, name?: string): Promise<Session> {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('sessions')
     .insert({
       user_id: userId,
       name: name || null,
-      description: description || null,
       is_active: true
     })
     .select()
@@ -56,7 +55,6 @@ export async function getSessionById(sessionId: string): Promise<Session | null>
 // Update session
 export async function updateSession(sessionId: string, updates: {
   name?: string
-  description?: string
   is_active?: boolean
 }): Promise<Session> {
   const supabase = createClient()

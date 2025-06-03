@@ -1,6 +1,9 @@
 import { createClient } from '@/lib/supabase/client'
 import type { Prompt } from '../types'
 
+// Define valid prompt statuses
+export type PromptStatus = 'pending' | 'processing' | 'completed' | 'failed'
+
 // ==================== PROMPT FUNCTIONS ====================
 
 // Submit prompt from partygoer
@@ -11,7 +14,7 @@ export async function submitPrompt(sessionId: string, promptText: string): Promi
     .insert({
       session_id: sessionId,
       prompt_text: promptText,
-      status: 'pending'
+      status: 'pending' as PromptStatus
     })
     .select()
     .single()
@@ -79,7 +82,7 @@ export async function getNextPendingPrompt(sessionId?: string): Promise<Prompt |
 }
 
 // Update prompt status
-export async function updatePromptStatus(promptId: string, status: Prompt['status']): Promise<Prompt> {
+export async function updatePromptStatus(promptId: string, status: PromptStatus): Promise<Prompt> {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('prompts')

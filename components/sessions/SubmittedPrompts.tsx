@@ -1,12 +1,19 @@
 "use client"
 import { useSessionPrompts } from '@/lib/supabase/hooks/useSessionPrompts'
+import { deletePrompt } from '@/lib/supabase/services/prompts'
+import { Trash2 } from 'lucide-react'
 
 interface SubmittedPromptsProps {
   sessionId: string
 }
 
 export function SubmittedPrompts({ sessionId }: SubmittedPromptsProps) {
-  const { data: prompts, loading, error } = useSessionPrompts(sessionId, undefined, 500)
+  const { data: prompts, loading, error, refetch } = useSessionPrompts(sessionId, undefined, 500)
+
+  const handleDelete = async (promptId: string) => {
+    await deletePrompt(promptId)
+    refetch()
+  }
 
   return (
     <div className="space-y-4">
@@ -25,9 +32,10 @@ export function SubmittedPrompts({ sessionId }: SubmittedPromptsProps) {
             <table className="min-w-full bg-card">
               <thead>
                 <tr className="bg-muted">
-                  <th className="px-4 py-2 text-left font-semibold first:rounded-tl-lg last:rounded-tr-lg">Prompt</th>
+                  <th className="px-4 py-2 text-left font-semibold first:rounded-tl-lg">Prompt</th>
                   <th className="px-4 py-2 text-left font-semibold">Status</th>
-                  <th className="px-4 py-2 text-left font-semibold last:rounded-tr-lg">Submitted At</th>
+                  <th className="px-4 py-2 text-left font-semibold">Submitted At</th>
+                  <th className="px-4 py-2 text-left font-semibold last:rounded-tr-lg"></th>
                 </tr>
               </thead>
               <tbody>
@@ -43,8 +51,15 @@ export function SubmittedPrompts({ sessionId }: SubmittedPromptsProps) {
                         {prompt.status}
                       </span>
                     </td>
-                    <td className={`px-4 py-2 align-top text-xs text-muted-foreground ${idx === prompts.length - 1 ? 'rounded-br-lg' : ''}`}>
-                      {new Date(prompt.created_at).toLocaleString()}
+                    <td className={`px-4 py-2 align-top text-xs text-muted-foreground ${idx === prompts.length - 1 ? 'rounded-br-lg' : ''}`}>{new Date(prompt.created_at).toLocaleString()}</td>
+                    <td className="px-4 py-2 align-top text-right">
+                      <button
+                        className="text-red-500 hover:text-red-700 p-1 rounded transition-colors"
+                        title="Delete prompt"
+                        onClick={() => handleDelete(prompt.id)}
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </td>
                   </tr>
                 ))}

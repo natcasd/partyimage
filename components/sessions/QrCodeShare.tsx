@@ -9,12 +9,13 @@ interface QrCodeShareProps {
 
 export function QrCodeShare({ sessionId }: QrCodeShareProps) {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('')
-  const [copied, setCopied] = useState(false)
+  const [submissionUrl, setSubmissionUrl] = useState<string | null>(null);
 
   useEffect(() => {
     async function generateQr() {
-      const submissionUrl = `${window.location.origin}/submit/${sessionId}`
-      const qrDataUrl = await QRCode.toDataURL(submissionUrl, {
+      const url = `${window.location.origin}/submit/${sessionId}`;
+      setSubmissionUrl(url)
+      const qrDataUrl = await QRCode.toDataURL(url, {
         width: 256,
         margin: 2,
         color: {
@@ -27,14 +28,6 @@ export function QrCodeShare({ sessionId }: QrCodeShareProps) {
     generateQr()
   }, [sessionId])
 
-  const copySubmissionUrl = () => {
-    const url = `${window.location.origin}/submit/${sessionId}`
-    navigator.clipboard.writeText(url)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 500)
-  }
-
-  const submissionUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/submit/${sessionId}`
 
   return (
     <div className="bg-card border rounded-lg p-6 space-y-6">
@@ -60,14 +53,16 @@ export function QrCodeShare({ sessionId }: QrCodeShareProps) {
         <div className="w-full">
           <label className="block text-sm font-medium text-muted-foreground mb-1">Submission URL:</label>
           <div className="relative bg-muted rounded mt-1">
-            <a
-              href={submissionUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full px-3 py-2 rounded text-sm break-all text-primary underline hover:bg-muted/70 hover:text-primary-foreground hover:scale-[1.01] transition-colors transition-transform duration-150"
-            >
-              {submissionUrl}
-            </a>
+            {submissionUrl && (
+              <a
+                href={submissionUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full px-3 py-2 rounded text-sm break-all text-primary underline underline-offset-4 hover:underline hover:decoration-2 hover:decoration-primary transition-all"
+              >
+                {submissionUrl}
+              </a>
+            )}
           </div>
           <p className="text-sm text-muted-foreground mt-2">
             Share this QR code or URL with your party guests so they can submit image prompts that will appear on your screen in real-time.

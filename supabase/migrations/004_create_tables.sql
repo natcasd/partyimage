@@ -13,9 +13,8 @@ DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
 -- Sessions table (party sessions created by hosts)
 CREATE TABLE sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  host_user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   name TEXT NOT NULL,
-  session_code TEXT UNIQUE NOT NULL,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
@@ -53,8 +52,7 @@ CREATE TABLE api_keys (
 );
 
 -- Essential indexes only
-CREATE INDEX idx_sessions_host_user_id ON sessions(host_user_id);
-CREATE INDEX idx_sessions_session_code ON sessions(session_code);
+CREATE INDEX idx_sessions_user_id ON sessions(user_id);
 CREATE INDEX idx_prompts_session_id ON prompts(session_id);
 CREATE INDEX idx_prompts_status ON prompts(status);
 CREATE INDEX idx_images_session_id ON images(session_id);
@@ -83,7 +81,7 @@ ALTER TABLE api_keys ENABLE ROW LEVEL SECURITY;
 
 -- Simple policies
 -- Sessions: Hosts manage their own, anyone can view active ones
-CREATE POLICY "Hosts manage own sessions" ON sessions FOR ALL USING (auth.uid() = host_user_id);
+CREATE POLICY "Hosts manage own sessions" ON sessions FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "Anyone can view active sessions" ON sessions FOR SELECT USING (is_active = true);
 
 -- Prompts: Anyone can submit/view for active sessions, hosts can manage their sessions
@@ -94,7 +92,7 @@ CREATE POLICY "Anyone can view prompts" ON prompts FOR SELECT USING (
   EXISTS (SELECT 1 FROM sessions WHERE id = prompts.session_id AND is_active = true)
 );
 CREATE POLICY "Hosts manage prompts in their sessions" ON prompts FOR ALL USING (
-  EXISTS (SELECT 1 FROM sessions WHERE id = prompts.session_id AND host_user_id = auth.uid())
+  EXISTS (SELECT 1 FROM sessions WHERE id = prompts.session_id AND user_id = auth.uid())
 );
 
 -- Images: Anyone can view for active sessions, hosts can manage their sessions  
@@ -102,7 +100,7 @@ CREATE POLICY "Anyone can view images" ON images FOR SELECT USING (
   EXISTS (SELECT 1 FROM sessions WHERE id = images.session_id AND is_active = true)
 );
 CREATE POLICY "Hosts manage images in their sessions" ON images FOR ALL USING (
-  EXISTS (SELECT 1 FROM sessions WHERE id = images.session_id AND host_user_id = auth.uid())
+  EXISTS (SELECT 1 FROM sessions WHERE id = images.session_id AND user_id = auth.uid())
 );
 
 -- API keys: Users manage their own

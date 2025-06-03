@@ -13,7 +13,6 @@ interface CreateSessionFormProps {
 
 export function CreateSessionForm({ onCreate }: CreateSessionFormProps) {
   const [name, setName] = useState("")
-  const [description, setDescription] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -30,10 +29,9 @@ export function CreateSessionForm({ onCreate }: CreateSessionFormProps) {
         throw new Error('You must be logged in to create a session')
       }
 
-      const session = await createSession(user.id, name, description)
+      const session = await createSession(user.id, name)
       onCreate(session)
       setName("")
-      setDescription("")
     } catch (err: any) {
       setError(err.message || "Failed to create session")
     } finally {
@@ -51,15 +49,6 @@ export function CreateSessionForm({ onCreate }: CreateSessionFormProps) {
           onChange={(e) => setName(e.target.value)}
           placeholder="Enter session name"
           required
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="sessionDescription">Description</Label>
-        <Input
-          id="sessionDescription"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Enter session description"
         />
       </div>
       {error && <p className="text-sm text-red-500">{error}</p>}
