@@ -1,5 +1,6 @@
 // lib/supabase/services/images.ts
-import { createClient } from '@/lib/supabase/client'
+import type { Image } from '../types'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 export interface ImageRecord {
   id: string;
@@ -18,9 +19,8 @@ export interface SaveImageOptions {
 }
 
 // Save image and return record with public URL
-export async function saveImage(buffer: Buffer, options: SaveImageOptions) {
+export async function saveImage(supabase: SupabaseClient, buffer: Buffer, options: SaveImageOptions) {
   const { sessionId, promptId, userId, fileExtension = 'png' } = options;
-  const supabase = createClient()
   const timestamp = Date.now();
   const promptPrefix = promptId ? `${promptId}_` : '';
   const filePath = `${userId}/${sessionId}/${promptPrefix}${timestamp}.${fileExtension}`;
@@ -61,8 +61,7 @@ export async function saveImage(buffer: Buffer, options: SaveImageOptions) {
   }
 }
 
-export async function getImage(imageId: string) {
-  const supabase = createClient()
+export async function getImage(supabase: SupabaseClient, imageId: string) {
   const { data: image, error } = await supabase
     .from('images')
     .select('*')
@@ -77,42 +76,27 @@ export async function getImage(imageId: string) {
   };
 }
 
-export async function getSessionImages(sessionId: string, limit?: number, offset?: number) {
-  const supabase = createClient()
-  let query = supabase
+export async function getSessionImages(supabase: SupabaseClient, sessionId: string): Promise<Image[]> {
+  const { data, error } = await supabase
     .from('images')
     .select('*')
     .eq('session_id', sessionId)
-    .order('created_at', { ascending: true });
+    .order('created_at', { ascending: false })
 
-  if (limit) query = query.limit(limit);
-  if (offset) query = query.range(offset, offset + (limit || 10) - 1);
-
-  const { data: images, error } = await query;
-  if (error) throw error;
-
-  return images.map(image => ({
-    ...image,
-    public_url: supabase.storage.from('party-images').getPublicUrl(image.storage_path).data.publicUrl
-  }));
+  if (error) throw error
+  return data
 }
 
-export async function deleteImage(imageId: string) {
-  const supabase = createClient()
-  const { data: image, error: getError } = await supabase
-    .from('images')
-    .select('storage_path')
-    .eq('id', imageId)
-    .single();
-
-  if (getError) throw getError;
-
-  await supabase.storage.from('party-images').remove([image.storage_path]);
-
-  const { error: deleteError } = await supabase
+export async function deleteImage(supabase: SupabaseClient, imageId: string): Promise<void> {
+  const { error } = await supabase
     .from('images')
     .delete()
-    .eq('id', imageId);
+    .eq('id', imageId)
 
-  if (deleteError) throw deleteError;
+  if (error) throw error
+}
+
+export function getImagePublicUrl(supabase: SupabaseClient, storagePath: string): string {
+  const { data } = supabase.storage.from('party-images').getPublicUrl(storagePath)
+  return data.publicUrl
 }

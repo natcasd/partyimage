@@ -1,11 +1,10 @@
-import { createClient } from '@/lib/supabase/client'
 import type { Session } from '@/lib/supabase/types'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 // ==================== SESSION FUNCTIONS ====================
 
 // Create new party session
-export async function createSession(userId: string, name?: string): Promise<Session> {
-  const supabase = createClient()
+export async function createSession(supabase: SupabaseClient, userId: string, name?: string): Promise<Session> {
   const { data, error } = await supabase
     .from('sessions')
     .insert({
@@ -21,8 +20,7 @@ export async function createSession(userId: string, name?: string): Promise<Sess
 }
 
 // Get user's sessions (for party host dashboard)
-export async function getUserSessions(userId: string, activeOnly: boolean = false): Promise<Session[]> {
-  const supabase = createClient()
+export async function getUserSessions(supabase: SupabaseClient, userId: string, activeOnly: boolean = false): Promise<Session[]> {
   let query = supabase
     .from('sessions')
     .select('*')
@@ -40,8 +38,7 @@ export async function getUserSessions(userId: string, activeOnly: boolean = fals
 }
 
 // Get session by ID (for public party screen)
-export async function getSessionById(sessionId: string): Promise<Session | null> {
-  const supabase = createClient()
+export async function getSessionById(supabase: SupabaseClient, sessionId: string): Promise<Session | null> {
   const { data, error } = await supabase
     .from('sessions')
     .select('*')
@@ -53,11 +50,10 @@ export async function getSessionById(sessionId: string): Promise<Session | null>
 }
 
 // Update session
-export async function updateSession(sessionId: string, updates: {
+export async function updateSession(supabase: SupabaseClient, sessionId: string, updates: {
   name?: string
   is_active?: boolean
 }): Promise<Session> {
-  const supabase = createClient()
   const { data, error } = await supabase
     .from('sessions')
     .update(updates)
@@ -70,13 +66,12 @@ export async function updateSession(sessionId: string, updates: {
 }
 
 // End party session
-export async function endSession(sessionId: string): Promise<Session> {
-  return updateSession(sessionId, { is_active: false })
+export async function endSession(supabase: SupabaseClient, sessionId: string): Promise<Session> {
+  return updateSession(supabase, sessionId, { is_active: false })
 }
 
 // Delete session
-export async function deleteSession(sessionId: string): Promise<void> {
-  const supabase = createClient()
+export async function deleteSession(supabase: SupabaseClient, sessionId: string): Promise<void> {
   const { error } = await supabase
     .from('sessions')
     .delete()
@@ -86,7 +81,7 @@ export async function deleteSession(sessionId: string): Promise<void> {
 }
 
 // Check if session is active and accepting prompts
-export async function isSessionActive(sessionId: string): Promise<boolean> {
-  const session = await getSessionById(sessionId)
+export async function isSessionActive(supabase: SupabaseClient, sessionId: string): Promise<boolean> {
+  const session = await getSessionById(supabase, sessionId)
   return session?.is_active || false
 }

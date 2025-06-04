@@ -1,7 +1,6 @@
 "use client"
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
-import { Copy } from 'lucide-react'
 
 interface QrCodeShareProps {
   sessionId: string

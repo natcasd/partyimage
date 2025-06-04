@@ -1,12 +1,15 @@
 import { QrCodeShare } from '@/components/sessions/QrCodeShare'
-import { SubmittedPrompts } from '@/components/sessions/SubmittedPrompts'
+import { SessionTabs } from '@/components/sessions/SessionTabs'
+import { ProcessPromptsClient } from '@/components/sessions/ProcessPromptsClient'
 
 interface PageProps {
-  params: { id: string }
+  params: Promise<{ id: string }>;
 }
 
 export default async function SessionPage({ params }: PageProps) {
-  const { id: sessionId } = params
+  const { id: sessionId } = await params;
+  console.log("session dashboard rerendering")
+
   return (
     <div className="w-full max-w-6xl mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Session Metadata</h1>
@@ -16,9 +19,10 @@ export default async function SessionPage({ params }: PageProps) {
           <QrCodeShare sessionId={sessionId} />
         </div>
         <div className="md:col-span-2">
-          <SubmittedPrompts sessionId={sessionId} />
+          <SessionTabs sessionId={sessionId} />
         </div>
       </div>
+      <ProcessPromptsClient sessionId={sessionId} />
     </div>
   )
 } 

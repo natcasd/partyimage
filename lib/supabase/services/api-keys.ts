@@ -1,11 +1,10 @@
-import { createClient } from '@/lib/supabase/client'
 import type { ApiKey } from '@/lib/supabase/types'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 // ==================== API KEY FUNCTIONS ====================
 
 // Get API key for a specific service (for using in your app)
-export async function getApiKeyForService(userId: string, serviceName: string): Promise<string | null> {
-  const supabase = createClient()
+export async function getApiKeyForService(supabase: SupabaseClient, userId: string, serviceName: string): Promise<string | null> {
   const { data, error } = await supabase
     .from('api_keys')
     .select('key_value')
@@ -18,8 +17,7 @@ export async function getApiKeyForService(userId: string, serviceName: string): 
 }
 
 // Save/Update API key
-export async function saveApiKey(userId: string, serviceName: string, keyValue: string): Promise<ApiKey> {
-  const supabase = createClient()
+export async function saveApiKey(supabase: SupabaseClient, userId: string, serviceName: string, keyValue: string): Promise<ApiKey> {
   const { data, error } = await supabase
     .from('api_keys')
     .upsert({
@@ -38,8 +36,7 @@ export async function saveApiKey(userId: string, serviceName: string, keyValue: 
 }
 
 // Get all API keys for a user (excluding actual key values for security)
-export async function getUserApiKeys(userId: string): Promise<Omit<ApiKey, 'key_value'>[]> {
-  const supabase = createClient()
+export async function getUserApiKeys(supabase: SupabaseClient, userId: string): Promise<Omit<ApiKey, 'key_value'>[]> {
   const { data, error } = await supabase
     .from('api_keys')
     .select('id, user_id, service_name, created_at, updated_at')
@@ -51,8 +48,7 @@ export async function getUserApiKeys(userId: string): Promise<Omit<ApiKey, 'key_
 }
 
 // Delete API key
-export async function deleteApiKey(userId: string, serviceName: string): Promise<void> {
-  const supabase = createClient()
+export async function deleteApiKey(supabase: SupabaseClient, userId: string, serviceName: string): Promise<void> {
   const { error } = await supabase
     .from('api_keys')
     .delete()
@@ -63,14 +59,13 @@ export async function deleteApiKey(userId: string, serviceName: string): Promise
 }
 
 // Check if user has API key for service
-export async function hasApiKey(userId: string, serviceName: string): Promise<boolean> {
-  const key = await getApiKeyForService(userId, serviceName)
+export async function hasApiKey(supabase: SupabaseClient, userId: string, serviceName: string): Promise<boolean> {
+  const key = await getApiKeyForService(supabase, userId, serviceName)
   return key !== null
 }
 
 // Get multiple API keys at once
-export async function getApiKeysForServices(userId: string, serviceNames: string[]): Promise<Record<string, string | null>> {
-  const supabase = createClient()
+export async function getApiKeysForServices(supabase: SupabaseClient, userId: string, serviceNames: string[]): Promise<Record<string, string | null>> {
   const { data, error } = await supabase
     .from('api_keys')
     .select('service_name, key_value')

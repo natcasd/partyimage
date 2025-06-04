@@ -1,15 +1,39 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ApiKeysManager } from '@/components/api-keys/api-keys-manager'
 import { CreateSessionForm } from '@/components/sessions/create-session-form'
+import type { User } from '@supabase/supabase-js'
 
 export default function DashboardPage() {
   const router = useRouter()
+  const [user, setUser] = useState<User | null>(null)
+  const supabase = createClient()
 
-  const handleSessionCreate = (session: { id: string }) => {
-    router.push(`/protected/session/${session.id}`)
+  useEffect(() => {
+    async function getUser() {
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
+    }
+    getUser()
+  }, [supabase])
+
+  const handleSessionCreate = (sessionId: string) => {
+    router.push(`/protected/session/${sessionId}`)
+  }
+
+  if (!user) {
+    return (
+      <div className="w-full h-full p-6 max-w-5xl mx-auto">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -32,7 +56,7 @@ export default function DashboardPage() {
           </div>
         </TabsContent>
         <TabsContent value="api-keys" className="w-full">
-          <ApiKeysManager />
+          <ApiKeysManager user={user} />
         </TabsContent>
       </Tabs>
     </div>

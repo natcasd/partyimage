@@ -1,41 +1,39 @@
 "use client"
 
 import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
-import { createSession } from "@/lib/supabase/services/sessions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { createSession } from "@/lib/supabase/services/sessions"
+import { createClient } from '@/lib/supabase/client'
 import { Label } from "@/components/ui/label"
 
 interface CreateSessionFormProps {
-  onCreate: (session: { id: string }) => void
+  onCreate: (sessionId: string) => void
 }
 
 export function CreateSessionForm({ onCreate }: CreateSessionFormProps) {
   const [name, setName] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const supabase = createClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
-    setError(null)
-    
+    if (!name.trim()) return
+
+    setIsLoading(true)
     try {
-      const supabase = createClient()
       const { data: { user }, error: authError } = await supabase.auth.getUser()
-      
       if (authError || !user) {
         throw new Error('You must be logged in to create a session')
       }
 
-      const session = await createSession(user.id, name)
-      onCreate(session)
+      const session = await createSession(supabase, user.id, name)
+      onCreate(session.id)
       setName("")
-    } catch (err: any) {
-      setError(err.message || "Failed to create session")
+    } catch (error) {
+      console.error("Failed to create session:", error)
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
@@ -49,11 +47,11 @@ export function CreateSessionForm({ onCreate }: CreateSessionFormProps) {
           onChange={(e) => setName(e.target.value)}
           placeholder="Enter session name"
           required
+          disabled={isLoading}
         />
       </div>
-      {error && <p className="text-sm text-red-500">{error}</p>}
-      <Button type="submit" disabled={loading}>
-        {loading ? "Creating..." : "Create Session"}
+      <Button type="submit" disabled={isLoading}>
+        {isLoading ? "Creating..." : "Create Session"}
       </Button>
     </form>
   )

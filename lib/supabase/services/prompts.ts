@@ -1,5 +1,5 @@
-import { createClient } from '@/lib/supabase/client'
 import type { Prompt } from '../types'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createImage } from '@/lib/imagegen/createImage'
 
 // Define valid prompt statuses
@@ -8,8 +8,7 @@ export type PromptStatus = 'pending' | 'processing' | 'completed' | 'failed'
 // ==================== PROMPT FUNCTIONS ====================
 
 // Submit prompt from partygoer
-export async function submitPrompt(sessionId: string, promptText: string): Promise<Prompt> {
-  const supabase = createClient()
+export async function submitPrompt(supabase: SupabaseClient, sessionId: string, promptText: string): Promise<Prompt> {
   const { data, error } = await supabase
     .from('prompts')
     .insert({
@@ -19,14 +18,11 @@ export async function submitPrompt(sessionId: string, promptText: string): Promi
     })
     .select()
     .single()
-  await createImage({ promptId: data.id, api: 'openai' })
-  if (error) throw error
   return data as Prompt
 }
 
 // Get prompts for a session (for queue management)
-export async function getSessionPrompts(sessionId: string, status?: string): Promise<Prompt[]> {
-  const supabase = createClient()
+export async function getSessionPrompts(supabase: SupabaseClient, sessionId: string, status?: string): Promise<Prompt[]> {
   let query = supabase
     .from('prompts')
     .select('*')
@@ -44,8 +40,7 @@ export async function getSessionPrompts(sessionId: string, status?: string): Pro
 }
 
 // Update prompt status
-export async function updatePromptStatus(promptId: string, status: PromptStatus): Promise<Prompt> {
-  const supabase = createClient()
+export async function updatePromptStatus(supabase: SupabaseClient, promptId: string, status: PromptStatus): Promise<Prompt> {
   const { data, error } = await supabase
     .from('prompts')
     .update({ status })
@@ -58,8 +53,7 @@ export async function updatePromptStatus(promptId: string, status: PromptStatus)
 }
 
 // Get prompt by ID
-export async function getPromptById(promptId: string): Promise<Prompt | null> {
-  const supabase = createClient()
+export async function getPromptById(supabase: SupabaseClient, promptId: string): Promise<Prompt | null> {
   const { data, error } = await supabase
     .from('prompts')
     .select('*')
@@ -71,8 +65,7 @@ export async function getPromptById(promptId: string): Promise<Prompt | null> {
 }
 
 // Delete prompt
-export async function deletePrompt(promptId: string): Promise<void> {
-  const supabase = createClient()
+export async function deletePrompt(supabase: SupabaseClient, promptId: string): Promise<void> {
   const { error } = await supabase
     .from('prompts')
     .delete()

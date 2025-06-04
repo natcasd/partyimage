@@ -1,18 +1,25 @@
 "use client"
 import { useSessionPrompts } from '@/lib/supabase/hooks/useSessionPrompts'
 import { deletePrompt } from '@/lib/supabase/services/prompts'
-import { Trash2 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { Button } from '@/components/ui/button'
+import type { Prompt } from '@/lib/supabase/types'
 
 interface SubmittedPromptsProps {
   sessionId: string
 }
 
 export function SubmittedPrompts({ sessionId }: SubmittedPromptsProps) {
-  const { data: prompts, loading, error, refetch } = useSessionPrompts(sessionId, undefined, 500)
+  const { prompts, loading, error, refetch } = useSessionPrompts(sessionId)
+  const supabase = createClient()
 
   const handleDelete = async (promptId: string) => {
-    await deletePrompt(promptId)
-    refetch()
+    try {
+      await deletePrompt(supabase, promptId)
+      refetch()
+    } catch (error) {
+      console.error('Failed to delete prompt:', error)
+    }
   }
 
   return (
@@ -39,7 +46,7 @@ export function SubmittedPrompts({ sessionId }: SubmittedPromptsProps) {
                 </tr>
               </thead>
               <tbody>
-                {prompts.map((prompt, idx) => (
+                {prompts.map((prompt: Prompt, idx: number) => (
                   <tr key={prompt.id} className={`border-t ${idx === prompts.length - 1 ? 'last:rounded-b-lg' : ''}`}>
                     <td className={`px-4 py-2 align-top ${idx === prompts.length - 1 ? 'rounded-bl-lg' : ''}`}>{prompt.prompt_text}</td>
                     <td className="px-4 py-2 align-top">
@@ -53,13 +60,13 @@ export function SubmittedPrompts({ sessionId }: SubmittedPromptsProps) {
                     </td>
                     <td className={`px-4 py-2 align-top text-xs text-muted-foreground ${idx === prompts.length - 1 ? 'rounded-br-lg' : ''}`}>{new Date(prompt.created_at).toLocaleString()}</td>
                     <td className="px-4 py-2 align-top text-right">
-                      <button
-                        className="text-red-500 hover:text-red-700 p-1 rounded transition-colors"
-                        title="Delete prompt"
+                      <Button
+                        variant="destructive"
+                        size="sm"
                         onClick={() => handleDelete(prompt.id)}
                       >
-                        <Trash2 size={16} />
-                      </button>
+                        Delete
+                      </Button>
                     </td>
                   </tr>
                 ))}

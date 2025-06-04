@@ -1,6 +1,10 @@
+"use client"
 import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-const supabase = createClient();
+
+const supabase = createClient()
+
+type PostgresChangesEvent = 'INSERT' | 'UPDATE' | 'DELETE' | '*'
 
 interface UseRealtimeDataOptions<T> {
   tableName: string
@@ -8,6 +12,7 @@ interface UseRealtimeDataOptions<T> {
   filter?: string
   channelName?: string
   minRefetchInterval?: number
+  eventType?: PostgresChangesEvent
 }
 
 interface UseRealtimeDataReturn<T> {
@@ -22,7 +27,8 @@ export function useRealtimeData<T>({
   fetchData,
   filter,
   channelName,
-  minRefetchInterval = 1000
+  minRefetchInterval = 1000,
+  eventType = '*'
 }: UseRealtimeDataOptions<T>): UseRealtimeDataReturn<T> {
   const [data, setData] = useState<T[]>([])
   const [loading, setLoading] = useState(true)
@@ -30,7 +36,10 @@ export function useRealtimeData<T>({
   const lastFetchTime = useRef<number>(0)
   const pendingRefetch = useRef<NodeJS.Timeout | null>(null)
 
+  console.log("useRealtimeData called")
+
   const executeRefetch = async () => {
+    console.log("executeRefetch called")
     setLoading(true)
     setError(null)
     try {
@@ -49,10 +58,8 @@ export function useRealtimeData<T>({
     const timeSinceLastFetch = now - lastFetchTime.current
 
     if (timeSinceLastFetch >= minRefetchInterval) {
-      // Enough time has passed, fetch immediately
       executeRefetch()
     } else {
-      // Too soon, schedule a fetch for later
       if (pendingRefetch.current) {
         clearTimeout(pendingRefetch.current)
       }
@@ -65,26 +72,54 @@ export function useRealtimeData<T>({
   }
 
   useEffect(() => {
-    // Initial fetch
+    console.log('base useeffect triggered')
     executeRefetch()
 
-    // Set up real-time subscription
-    const channel = supabase
-      .channel(channelName || `realtime_${tableName}`)
-      .on(
+    // Derive an event-specific channel suffix
+    const eventSuffix = eventType === '*' ? 'all' : eventType.toLowerCase()
+    const derivedChannelName = channelName || `realtime_${tableName}_${eventSuffix}`
+
+    const channel = supabase.channel(derivedChannelName)
+
+    if (eventType === 'INSERT') {
+      channel.on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: tableName,
-          ...(filter && { filter })
-        },
+        { event: 'INSERT', schema: 'public', table: tableName, ...(filter && { filter }) },
         (payload) => {
-          console.log(`[${tableName}] Database change detected:`, payload.eventType)
+          console.log(`[${tableName}] INSERT detected`, payload)
           throttledRefetch()
         }
       )
-      .subscribe()
+    } else if (eventType === 'UPDATE') {
+      channel.on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: tableName, ...(filter && { filter }) },
+        (payload) => {
+          console.log(`[${tableName}] UPDATE detected`, payload)
+          throttledRefetch()
+        }
+      )
+    } else if (eventType === 'DELETE') {
+      channel.on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: tableName, ...(filter && { filter }) },
+        (payload) => {
+          console.log(`[${tableName}] DELETE detected`, payload)
+          throttledRefetch()
+        }
+      )
+    } else {
+      channel.on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: tableName, ...(filter && { filter }) },
+        (payload) => {
+          console.log(`[${tableName}] Change detected (${payload.eventType})`, payload)
+          throttledRefetch()
+        }
+      )
+    }
+
+    channel.subscribe()
 
     return () => {
       supabase.removeChannel(channel)
@@ -92,7 +127,7 @@ export function useRealtimeData<T>({
         clearTimeout(pendingRefetch.current)
       }
     }
-  }, [tableName, filter, channelName, minRefetchInterval])
+  }, [tableName, filter, channelName, minRefetchInterval, eventType])
 
   return {
     data,

@@ -1,170 +1,115 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { SERVICE_NAMES, type ServiceName } from '@/lib/supabase/types'
+import { useState } from 'react'
 import { getUserApiKeys, saveApiKey, deleteApiKey } from '@/lib/supabase/services/api-keys'
 import { createClient } from '@/lib/supabase/client'
-import { Trash } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import type { ApiKey } from '@/lib/supabase/types'
 
-export function ApiKeysManager() {
-  const [apiKeys, setApiKeys] = useState<Record<string, string>>({})
-  const [selectedService, setSelectedService] = useState<ServiceName | ''>('')
+interface ApiKeysManagerProps {
+  user: { id: string }
+}
+
+export function ApiKeysManager({ user }: ApiKeysManagerProps) {
+  const [selectedService, setSelectedService] = useState<string>('')
   const [newKey, setNewKey] = useState('')
+  const [keys, setKeys] = useState<Omit<ApiKey, 'key_value'>[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const supabase = createClient()
 
-  useEffect(() => {
-    loadApiKeys()
-  }, [])
-
-  const loadApiKeys = async () => {
-    setError(null)
+  const loadKeys = async () => {
     try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      const keys = await getUserApiKeys(user.id)
-      const keyMap = keys.reduce((acc, key) => ({
-        ...acc,
-        [key.service_name]: '••••••••' // Show masked value
-      }), {})
-      setApiKeys(keyMap)
-    } catch (err) {
-      console.error('Failed to load API keys:', err)
-      setError(typeof err === 'object' && err !== null ? JSON.stringify(err) : String(err))
+      const keys = await getUserApiKeys(supabase, user.id)
+      setKeys(keys)
+    } catch (error) {
+      console.error('Failed to load API keys:', error)
+      setError('Failed to load API keys')
     }
   }
 
-  const handleSaveKey = async () => {
+  const handleSave = async () => {
     if (!selectedService || !newKey) return
 
     setLoading(true)
     setError(null)
-    try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
 
-      await saveApiKey(user.id, selectedService, newKey)
-      await loadApiKeys()
+    try {
+      await saveApiKey(supabase, user.id, selectedService, newKey)
       setNewKey('')
-      setSelectedService('')
-    } catch (err) {
-      console.error('Failed to save API key:', err)
-      setError(typeof err === 'object' && err !== null ? JSON.stringify(err) : String(err))
+      await loadKeys()
+    } catch (error) {
+      console.error('Failed to save API key:', error)
+      setError('Failed to save API key')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleDeleteKey = async (serviceName: string) => {
+  const handleDelete = async (serviceName: string) => {
     setLoading(true)
     setError(null)
+
     try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      await deleteApiKey(user.id, serviceName)
-      await loadApiKeys()
-    } catch (err) {
-      console.error('Failed to delete API key:', err)
-      setError(typeof err === 'object' && err !== null ? JSON.stringify(err) : String(err))
+      await deleteApiKey(supabase, user.id, serviceName)
+      await loadKeys()
+    } catch (error) {
+      console.error('Failed to delete API key:', error)
+      setError('Failed to delete API key')
     } finally {
       setLoading(false)
     }
   }
 
-  // Get available services (ones that don't have keys yet)
-  const availableServices = Object.entries(SERVICE_NAMES).filter(([_, value]) => !apiKeys[value])
-
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold mb-2">API Key Management</h2>
-        <p className="text-muted-foreground mb-4">
-          Manage your API keys for image generation services.
-        </p>
+    <div className="space-y-4">
+      <h2 className="text-xl font-semibold">API Keys</h2>
+      {error && <div className="text-red-500 bg-red-50 p-3 rounded">{error}</div>}
+      
+      <div className="flex gap-2">
+        <Select value={selectedService} onValueChange={setSelectedService}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Select service" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="openai">OpenAI</SelectItem>
+            <SelectItem value="stability">Stability AI</SelectItem>
+          </SelectContent>
+        </Select>
+        <Input
+          type="password"
+          placeholder="Enter API key"
+          value={newKey}
+          onChange={(e) => setNewKey(e.target.value)}
+          className="flex-1"
+        />
+        <Button onClick={handleSave} disabled={loading || !selectedService || !newKey}>
+          {loading ? 'Saving...' : 'Save'}
+        </Button>
       </div>
 
-      {/* Existing Keys */}
-      <div className="space-y-4">
-        {Object.entries(apiKeys).map(([serviceName, _]) => (
-          <div key={serviceName} className="space-y-2">
-            <Label>{serviceName}</Label>
-            <div className="flex gap-2 items-center">
-              <Input
-                type="password"
-                value="••••••••"
-                readOnly
-                placeholder="No API key set"
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => handleDeleteKey(serviceName)}
-                disabled={loading}
-                aria-label={`Delete ${serviceName} API key`}
-                className="focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
-              >
-                <Trash className="w-4 h-4 text-red-500 opacity-60 hover:opacity-100 transition-opacity" />
-              </Button>
+      <div className="space-y-2">
+        {keys.map((key) => (
+          <div key={key.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+            <div>
+              <p className="font-medium">{key.service_name}</p>
+              <p className="text-sm text-muted-foreground">
+                Last updated: {new Date(key.updated_at).toLocaleString()}
+              </p>
             </div>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => handleDelete(key.service_name)}
+              disabled={loading}
+            >
+              Delete
+            </Button>
           </div>
         ))}
       </div>
-
-      {/* Add New Key */}
-      {availableServices.length > 0 && (
-        <div className="space-y-4 pt-4 border-t">
-          <h3 className="text-lg font-medium">Add New API Key</h3>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Service</Label>
-              <Select value={selectedService} onValueChange={(value) => setSelectedService(value as ServiceName)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a service" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableServices.map(([key, value]) => (
-                    <SelectItem key={value} value={value}>
-                      {key}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>API Key</Label>
-              <div className="flex gap-2">
-                <Input
-                  type="password"
-                  value={newKey}
-                  onChange={(e) => setNewKey(e.target.value)}
-                  placeholder="Enter your API key"
-                />
-                <Button
-                  onClick={handleSaveKey}
-                  disabled={loading || !selectedService || !newKey}
-                >
-                  {loading ? 'Saving...' : 'Save'}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Error Message */}
-      {error && (
-        <div className="text-red-500 bg-red-100 border border-red-300 rounded p-2 mb-4">
-          {error}
-        </div>
-      )}
     </div>
   )
 } 

@@ -30,7 +30,7 @@ export interface Image {
   id: string
   session_id: string
   prompt_id: string
-  image_url: string | null
+  storage_path: string
   created_at: string
 }
 
