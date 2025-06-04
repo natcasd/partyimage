@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client'
 import type { Prompt } from '../types'
+import { createImage } from '@/lib/imagegen/createImage'
 
 // Define valid prompt statuses
 export type PromptStatus = 'pending' | 'processing' | 'completed' | 'failed'
@@ -18,7 +19,7 @@ export async function submitPrompt(sessionId: string, promptText: string): Promi
     })
     .select()
     .single()
-  
+  await createImage({ promptId: data.id, api: 'openai' })
   if (error) throw error
   return data as Prompt
 }
@@ -42,45 +43,6 @@ export async function getSessionPrompts(sessionId: string, status?: string): Pro
   return data as Prompt[]
 }
 
-// Get pending prompts (for processing queue)
-export async function getPendingPrompts(sessionId?: string): Promise<Prompt[]> {
-  const supabase = createClient()
-  let query = supabase
-    .from('prompts')
-    .select('*')
-    .eq('status', 'pending')
-    .order('created_at', { ascending: true })
-  
-  if (sessionId) {
-    query = query.eq('session_id', sessionId)
-  }
-  
-  const { data, error } = await query
-  
-  if (error) throw error
-  return data as Prompt[]
-}
-
-// Get next pending prompt (for queue processing)
-export async function getNextPendingPrompt(sessionId?: string): Promise<Prompt | null> {
-  const supabase = createClient()
-  let query = supabase
-    .from('prompts')
-    .select('*')
-    .eq('status', 'pending')
-    .order('created_at', { ascending: true })
-    .limit(1)
-  
-  if (sessionId) {
-    query = query.eq('session_id', sessionId)
-  }
-  
-  const { data, error } = await query
-  
-  if (error) throw error
-  return data?.[0] as Prompt || null
-}
-
 // Update prompt status
 export async function updatePromptStatus(promptId: string, status: PromptStatus): Promise<Prompt> {
   const supabase = createClient()
@@ -93,21 +55,6 @@ export async function updatePromptStatus(promptId: string, status: PromptStatus)
   
   if (error) throw error
   return data as Prompt
-}
-
-// Mark prompt as processing
-export async function markPromptAsProcessing(promptId: string): Promise<Prompt> {
-  return updatePromptStatus(promptId, 'processing')
-}
-
-// Mark prompt as completed
-export async function markPromptAsCompleted(promptId: string): Promise<Prompt> {
-  return updatePromptStatus(promptId, 'completed')
-}
-
-// Mark prompt as failed
-export async function markPromptAsFailed(promptId: string): Promise<Prompt> {
-  return updatePromptStatus(promptId, 'failed')
 }
 
 // Get prompt by ID

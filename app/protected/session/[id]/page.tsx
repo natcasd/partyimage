@@ -5,7 +5,7 @@ interface PageProps {
   params: { id: string }
 }
 
-export default function SessionPage({ params }: PageProps) {
+export default async function SessionPage({ params }: PageProps) {
   const { id: sessionId } = params
   return (
     <div className="w-full max-w-6xl mx-auto p-4">
